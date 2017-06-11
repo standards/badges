@@ -1,0 +1,26 @@
+{
+  "name": "badges",
+  "version": "1.0.0",
+  "description": "Beautiful badges for the Standards initiative",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Standards/badges"
+  },
+  "keywords": [
+    "standards",
+    "badges",
+    "github"
+  ],
+  "author": "Leo Giovanetti <hello@leog.me>",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.15.3",
+    "octonode": "^0.7.13",
+    "semver": "^5.3.0",
+    "string-pixel-width": "^1.0.7"
+  }
+}
