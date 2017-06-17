@@ -127,7 +127,7 @@ app.get('/badge/:owner/:repo/:issue', function (req, res) {
             console.log(allInfo.complierRepo + ':' + allInfo.complyingStandard + ':' + allInfo.complierVersion, "Not Cached!")
         }
 
-        if(allInfo.complierRepo === "standards/meta" && req.params.issue === "5") {
+        if(allInfo.complierRepo === "standards/meta" && req.params.issue === "4") {
             var resultSVG = getSVG("standards/meta", "standards/meta", allInfo.complierVersion, "#00FF00");
             myCache.set(allInfo.complierRepo + ':' + allInfo.complyingStandard + ':' + allInfo.complierVersion, resultSVG, function(err, success) {
                 if(!err && success){
