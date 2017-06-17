@@ -208,8 +208,8 @@ app.get('/participants.json', function(req, res) {
             res.send(value);
         } else {
             console.log("Participants not cached!");
-            client.get('/repos/standards/meta/issues/comments', { per_page: 100 }, function (err, status, result, headers) {
-                var participants = [...new Set(result.filter(comment => comment.user.login !== "t-giovl").map(comment => comment.user.login))];
+            client.get('/repos/standards/meta/issues/comments', { per_page: 100 }, function (err, status, result) {
+                var participants = [...new Set(result.map(comment => comment.user.login))];
                 myCache.set('participants', participants, function(err, success) {
                     res.send(participants);
                 });
