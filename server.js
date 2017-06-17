@@ -3,66 +3,72 @@ const util = require("util");
 const pixelWidth = require("string-pixel-width");
 const semver = require("semver");
 const express = require("express");
+const http = require('http');
+const fs = require("fs");
 const app = express();
+
+const NodeCache = require("node-cache");
+const myCache = new NodeCache({ stdTTL: 604800, checkperiod: 259200 });
 
 const client = github.client(process.env.GITHUB_TOKEN);
 
 var svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="%s" height="50">
-  <path d="M15,5 h%s a10,10 0 0 1 10,10 v20 a10,10 0 0 1 -10,10 h-%s a10,10 0 0 1 -10,-10 v-20 a10,10 0 0 1 10,-10 z" fill="none" stroke="#144677" stroke-width="1" />
-  <a xlink:href="https://standards.github.io" target="_blank">
-    <text x="42" y="20" font-family="Arial" font-size="10" fill="grey" font-weight="300">GitHub Standard</text>
-    <image x="8" y="9" width="32" height="32" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyJpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMC1jMDYxIDY0LjE0MDk0OSwgMjAxMC8xMi8wNy0xMDo1NzowMSAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENTNS4xIFdpbmRvd3MiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6RkU2MEUwRTk0RTQ2MTFFN0FBRTZEMDY2NTkxQjk5QTUiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6RkU2MEUwRUE0RTQ2MTFFN0FBRTZEMDY2NTkxQjk5QTUiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDpGRTYwRTBFNzRFNDYxMUU3QUFFNkQwNjY1OTFCOTlBNSIgc3RSZWY6ZG9jdW1lbnRJRD0ieG1wLmRpZDpGRTYwRTBFODRFNDYxMUU3QUFFNkQwNjY1OTFCOTlBNSIvPiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/PgfAAXUAAAoaSURBVHjajFcJcFRV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" />
-  </a>
-    <text x="42" y="37">
-      <tspan font-family="Arial" font-size="15" fill="#144677" font-weight="600">%s</tspan>
-      <tspan font-family="Arial" font-size="15" fill="#144677" font-weight="500">%s</tspan>
-      <tspan font-family="Arial" font-size="15" fill="%s" font-weight="500">●</tspan>
-    </text>
-</svg>`;
+			  <path d="M15,5 h%s a10,10 0 0 1 10,10 v14 a10,10 0 0 1 -10,10 h-%s a10,10 0 0 1 -10,-10 v-14 a10,10 0 0 1 10,-10 z" fill="none" stroke="#144677" stroke-width="1"></path>
+			  <a xlink:href="https://standards.github.io" target="_blank">
+				<text x="36" y="18" font-family="Arial" font-size="9" fill="grey" font-weight="300">%s</text>
+				<image x="9" y="9" width="26" height="26" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABoAAAAaCAYAAACpSkzOAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyJpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMC1jMDYxIDY0LjE0MDk0OSwgMjAxMC8xMi8wNy0xMDo1NzowMSAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENTNS4xIFdpbmRvd3MiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6RjBGMkVDRjM1MzlCMTFFN0FDMEQ5MTM4QkIzRDRBOEIiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6RjBGMkVDRjQ1MzlCMTFFN0FDMEQ5MTM4QkIzRDRBOEIiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDpGMEYyRUNGMTUzOUIxMUU3QUMwRDkxMzhCQjNENEE4QiIgc3RSZWY6ZG9jdW1lbnRJRD0ieG1wLmRpZDpGMEYyRUNGMjUzOUIxMUU3QUMwRDkxMzhCQjNENEE4QiIvPiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/PmRAYgkAAAeaSURBVHjahFYJcFXlFT7/f5e3b8l7edlfFhKyQkImCVgIZRqQoRAYoyIMOqNOWwYcndpxmKpTpstgxbaitkVqIXQRiRWkJUkLZS2YCERTEkIas0HIxsv+kpe33Xdvz39jHtFSvZl/7std/u+c73znO5coigKv/vEMzB06jQBjnhlwj0+BFA6DAS8YtKKrp39k6cS0L9cXkhyBYEiD1wZtJv3NlPjoKwSgJ8Zm8nf1D4PA82DWa0HGfeeOn21fDzzc51DwjxJKdRqa2Nnr3tHe6y63mfVFuWlOcNrMQCmFu2MeaOkahE/b+1ozkhyXygrSf8lz3C18XbrfnvcF4iglPn+gvKmj7yd6jVD6o6fXwpKsZJjw+pSpmSAQAsSk1yhWg440d/TnvvX+hdyjpz8pLcl17TEZtCeQJUmZl9F9gThKWNqLLzZ17ivNc2Xv2VEBV9t65efe/BBauwfJtC9I2CZGpCc71Sk/ta4Eqvc8RXf/rq6wtv7mb7etLR6NMuvP+4PS/wIRDHHu7PUHE05cuF61vCCNgSgvHahVDh+7REDgCNWKyOtspDPBEBn6eJScv9isbN6wTP7Vs5uIyFPH3y61HHxiXclqUeC65tdJBfIHQ+o/FIGaO/u+pxW5nJeffBBe2l8Dh2uv0vKViyUsNOkZGCNGg0YNa8rrh6QEh5KV4pTfP9fESZKkvPbMRla31Prm7h+sKsrcQb6c0cjE9FxGC250DTz63GOrxKvtffLhv35EXClx4Xd3Pw4DwxOMwnC8w8LiIf3uSbkgI4Fmu5yw7Luvy8fqrtG1D+Qp2x9aTna/U1eZ7Yo9hBk1fgEoNtoMDL1/ZDLHbNSlluanwgtvnlCxBZGiyoCyTdli1z5/l/1mVAPPczLwHKk6Wa+8vesxsFsN0bhXoSvW1gjKvIcNOhEMeg3cuTtelhhjE8OyAk1dA8AQNmCUdrNhbnPyZfFgP9GKFXkYMoWW7iHi8fqVBQl2bmB4sgxFQbAt7gFNTvthcsoP4bAsxNgMDFAZm/IREHkoyU4m9wOYfzyQlwKcKDDpk+GJaZIca2MtwKEWiDyfOgGjYYoLhiSzjHcUzIhVnJ19gRB83cHoCzOF4TtYF/X1AO4lKbKAlwORjHgEQorBatL3jqP9JMZYSZRJryAy1DW0Mpblr8CRaxvaCITCahM7LUYy4J4Eq1HXh40fYH0ZAZLCCkgYBoqitWtgNMRxFPKSHWCJMsv117vhxQM18vjUDCZ7ry9Y02I95FePnA1Xn2uiLJuc5BhFpxXgP7eHFLvN2DY144fpmcA9oDGPF0YnvaAR+Sa0no4rLT2w9cFiYjVolO9vWeX7U+2V8IJHfqrUXG6N8Hj6antoyZO/kH+4v0bA2qp28sT6EmjpGIBRz8xdk15bP4F1n8D6R4DUbleYkUJHeoL95J//fs1ftiSDFKXF0xPn/q19/fmHgzsfLgvkpMTSeWrj3GMeDqUNAQxy0zcXK6uLFtJDtQ3ygkRHXZLTdg17DtiKAGlxNMytwqykt27fHRv58YEa2LdrMzgdVu61d8/pvTN+AQOJqE8QOCpi0UNjU0rlmiL5jecryd4/nIb2niHvioL0V1htODK7IqqbsyR2QpWl4K349041IpUC2buzglSfbVKO/KORPLRyEaQl2GeBKJXzMxKUDd9ZRypXLYI9VafI7082QGyU2eT1BdNxr05ZvlfT2YbViJHV3T/yODo0tZgNcOzCddj84iGw6jXk+M+fJovQGVgzM7PMdMXQd17eRs06kT6y6yB97/QnYDHqmNlC262hbQxERvmwFckINT8bJc/Fd/YNr2e5eVAxr+zYCHqRg+p/fgq//su/SE5qHDiijGqPjYxPQ3PHIIky66BiRb7qLC/gKDHi+bNe99qCzMR0VG/XF7wuhCObybV/eGLT4IgnLhgKg9NqgjUlWVC4MBGW5adD2fZ90NY99LlHsOYk6jr1xk5YU5oFN3uGYN/R8+AemwJ0B3u/e6ISnX3vHH0qdRaDFswGHY8j+1H8HqA+TH9lUQbkpsWqD2HTYq9JYLXoYWl+Ssc3CtJvWkw6HFEUzl5rV5/JTnHCt4ozVXZYoDe6Byoxdr0OyxEBwmloGxr1bOy8M1zoC0jojxysLs0GUeDVuXMca8VzPILJsDQvtapief7bkiSr9z+82IwZeFULKy/OAq0oqLbV1TeaNzAyuQXZSoxQh1yW4hdPSVJM1O24aIuM3sddbupQAoFQGv42qF83AgW7xRgwG7Q1uKsv3m7x4AeKud89DtVnUKG84G1o6e4pyEzArMISTymPzrEUZ50XIY6qQK4425kYm/FssjNqNwYmyoos4mALNbbd/nbTZ32/UWSwMu1kJsecwhHdic+EMpIdNcjCVjYF939weQZr+Sz62/ENK/KxhWiIebROw4fxy0iJZISSlRgtyC+zGD/6LxsZkOi0HTEYtPKox3sQx4i+NDflg/REh49N5Ny0uONXbtzaKoq8tHxR+jM2s7ZqAmnGCYAJU1UrbCrQ+Q37/46QFIaUuKij5cUL7Z13RrYkO20fWQx69C8fxEWbPy7MTLzgsJnqXHFRVaOT0185tP4rwACqnnZ5ACpWDQAAAABJRU5ErkJggg=="></image>
+			  </a>
+				<text x="36" y="32">
+				  <tspan font-family="Arial" font-size="12" fill="#144677" font-weight="600">%s</tspan>
+				  <tspan font-family="Arial" font-size="12" fill="#144677" font-weight="500">%s</tspan>
+				  <tspan font-family="Arial" font-size="12" fill="%s" font-weight="500">●</tspan>
+				</text>
+			</svg>`;
 
-var getSVG = function(text1, text2, color) {
-    var width = pixelWidth(text1 + ' ' + text2, { size: 15 });
-    if(width < 115 - 36) width = 115 - 38;
-    return util.format(svg, width + 38 + 30, width + 38, width + 38, text1, text2, color);
+var getSVG = function(text1, text2, text3, color) {
+    var width = pixelWidth(text2 + ' ' + text3, { size: 12 });
+    return util.format(svg, width + 34 + 30, width + 34, width + 34, text1, text2, text3, color);
 };
 
 var svgs = {
-    "timeout": getSVG.bind(this, "Timeout", "", "#BF00FF"),
-    "invalidIssue": getSVG.bind(this, "Invalid", "issue", "#FF00FF"),
-    "invalidVersion": getSVG.bind(this, "Invalid", "version", "#0000FF"),
-    "invalidRepo": getSVG.bind(this, "Invalid", "repo", "#FF8000"),
-    "versionMismatch": getSVG.bind(this, "Version", "mismatch", "#000000"),
-    "invalidRelease": getSVG.bind(this, "Invalid", "release", "#BDBDBD"),
-    "invalidStandard": getSVG.bind(this, "Invalid", "standard", "#00FFFF"),
-    "upToDate": getSVG.bind(this, "Standard", "vX.Y.Z", "#00FF00"),
-    "outOfDate": getSVG.bind(this, "Standard", "vX.Y.Z", "#FF0000")
+    "ghIssue": getSVG.bind(this, "Error", "GitHub", "issue", "#BF00FF"),
+    "invalidIssue": getSVG.bind(this, "Error", "Invalid", "issue", "#FF00FF"),
+    "invalidVersion": getSVG.bind(this, "Error", "Invalid", "version", "#0000FF"),
+    "invalidRepo": getSVG.bind(this, "Error", "Invalid", "repo", "#FF8000"),
+    "versionMismatch": getSVG.bind(this, "Error", "Version", "mismatch", "#000000"),
+    "invalidRelease": getSVG.bind(this, "Error", "Invalid", "release", "#BDBDBD"),
+    "invalidStandard": getSVG.bind(this, "Error", "Invalid", "standard", "#00FFFF"),
+    "upToDate": getSVG.bind(this, "owner/repo", "example", "vX.Y.Z", "#00FF00"),
+    "outOfDate": getSVG.bind(this, "owner/repo", "example", "vX.Y.Z", "#FF0000"),
+    "invalidTitle": getSVG.bind(this, "Error", "Invalid", "title", "#FFFF66")
 };
 
 app.get('/legend', function(req, res) {
     res.setHeader('Content-Type', 'text/html');
     res.send(`<html><head><style>body { font-family: Arial; } div {display: block;} div svg {display: inline-block;vertical-align: middle;}</style></head><body>
-        <div>`+svgs.upToDate()+`The standard is up-to-date</div>
-        <div>`+svgs.outOfDate()+`The standard is out of date</div>
+        <div>`+svgs.upToDate()+`The repository "owner/repo" complies with the latest version of the standard "example"</div>
+        <div>`+svgs.outOfDate()+`The repository "owner/repo" complied with an older version of the standard "example"</div>
         <hr>
-        <div>`+svgs.timeout()+`The GitHub API connection timeout</div>
+        <div>`+svgs.ghIssue()+`The GitHub API is throwing some error</div>
         <div>`+svgs.invalidIssue()+`There is no issue with the number provided</div>
-        <div>`+svgs.invalidVersion()+`The issue's version section is not in the form vX.Y.Z</div>
-        <div>`+svgs.invalidRepo()+`The issue's repository section was not found</div>
-        <div>`+svgs.versionMismatch()+`The issue's version section does not match with a valid standard version</div>
-        <div>`+svgs.invalidRelease()+`The issue's repository does not have a valid release</div>
-        <div>`+svgs.invalidStandard()+`The issue's standard is not a validated standard yet</div>
+        <div>`+svgs.invalidVersion()+`The version section of the validation request is not in the form vX.Y.Z or X.Y.Z (<a href="http://semver.org" target="_blank">semver</a>)</div>
+        <div>`+svgs.invalidRepo()+`The repository section of the validation request was not found</div>
+        <div>`+svgs.versionMismatch()+`The version section of the validation request does not match with a valid standard version</div>
+        <div>`+svgs.invalidRelease()+`The standard does not have a valid release</div>
+        <div>`+svgs.invalidStandard()+`The standard is not a validated standard yet</div>
+        <div>`+svgs.invalidTitle()+`The title of the validation request was changed after its creation</div>
     </body></html>`);
 });
 
 /*app.get('/error/:error', function(req, res) {
-    if(errorMessages[req.params.error]) {
-        res.setHeader('Content-Type', 'image/svg+xml');
-        res.send(errorMessages[req.params.error]());
-    } else {
-        res.setHeader('Content-Type', 'text/html');
-        res.send("Invalid error message: " + req.params.error);
-    }
-});*/
+ if(errorMessages[req.params.error]) {
+ res.setHeader('Content-Type', 'image/svg+xml');
+ res.send(errorMessages[req.params.error]());
+ } else {
+ res.setHeader('Content-Type', 'text/html');
+ res.send("Invalid error message: " + req.params.error);
+ }
+ });*/
 
 app.get('/limits', function(req, res) {
     client.limit(function (err, left, max, reset) {
@@ -74,15 +80,26 @@ app.get('/limits', function(req, res) {
     });
 });
 
-app.get('/badge/:issue', function (req, res) {
+var getIssueInfo = function(title, params) {
+    var titleParts = title.split(' ');
+    return {
+        complierRepo: titleParts[1],
+        complierVersion: titleParts[2],
+        complyingStandard: params.owner + '/' + params.repo
+    }
+};
+
+app.get('/badge/:owner/:repo/:issue', function (req, res) {
     res.setHeader('Content-Type', 'image/svg+xml');
-    var ghissue = client.issue('Standards/meta', req.params.issue);
+    var ghissue = client.issue(req.params.owner + '/' + req.params.repo, req.params.issue);
+
     ghissue.info(function(err, data) {
         if(err !== null) {
+            console.log(err);
             if(err.code) {
                 switch(err.code) {
                     case "ETIMEDOUT":
-                        res.send(svgs.timeout());
+                        res.send(svgs.ghIssue());
                         break;
                 }
             } else if(err.statusCode) {
@@ -90,9 +107,36 @@ app.get('/badge/:issue', function (req, res) {
                     case 404:
                         res.send(svgs.invalidIssue());
                         break;
+                    case 401:
+                        res.send(svgs.ghIssue());
+                        break;
                 }
             }
 
+            return;
+        }
+
+        var allInfo = getIssueInfo(data.title, req.params);
+
+        var cachedResult = myCache.get(allInfo.complierRepo + ':' + allInfo.complyingStandard + ':' + allInfo.complierVersion);
+        if(cachedResult !== undefined) {
+            console.log(allInfo.complierRepo + ':' + allInfo.complyingStandard + ':' + allInfo.complierVersion, "Cached!")
+            res.send(cachedResult);
+            return;
+        } else {
+            console.log(allInfo.complierRepo + ':' + allInfo.complyingStandard + ':' + allInfo.complierVersion, "Not Cached!")
+        }
+
+        if(allInfo.complierRepo === "standards/meta" && req.params.issue === "5") {
+            var resultSVG = getSVG("standards/meta", "standards/meta", allInfo.complierVersion, "#00FF00");
+            myCache.set(allInfo.complierRepo + ':' + allInfo.complyingStandard + ':' + allInfo.complierVersion, resultSVG, function(err, success) {
+                if(!err && success){
+                    res.send(resultSVG);
+                } else {
+                    console.log(err, success);
+                    res.send(resultSVG);
+                }
+            });
             return;
         }
 
@@ -101,44 +145,54 @@ app.get('/badge/:issue', function (req, res) {
         });
 
         if(validated.length) {
-            var titleParts = data.title.split(' ');
-            var standardPath = titleParts[0].split('/');
-            var title = standardPath[1];
-            var version = titleParts[titleParts.length - 1];
-
-            if(req.params.issue === 5) {
-                res.send(getSVG("meta", version, "#00FF00"));
-                return;
-            }
-
-            if(version[0] !== 'v') {
-                res.send(svgs.invalidVersion());
-                return;
-            }
-
-            var ghrepo = client.repo(titleParts[0]);
-            ghrepo.releases(function(err, info) {
-                if(err !== null) {
-                    res.send(svgs.invalidRepo());
-                    return
-                }
-                var color;
-                var stable = info.filter(function(release) {
-                    return release.draft == false;
+            client.get('/repos/'+allInfo.complyingStandard+'/issues/' + req.params.issue + '/events', { per_page: 100 }, function (err, status, events, headers) {
+                var renamings = events.filter(function(event) {
+                    return event.event == "renamed";
                 });
-                if(stable.length) {
-                    if(semver.eq(version, stable[0].tag_name)) {
-                        color = '#00FF00';
-                    } else if(semver.lt(version, stable[0].tag_name)) {
-                        color = '#FF0000';
-                    } else {
-                        res.send(svgs.versionMismatch());
-                        return;
-                    }
-                    res.send(getSVG(title, version, color));
-                } else {
-                    res.send(svgs.invalidRelease());
+
+                if(renamings.length) {
+                    res.send(svgs.invalidTitle());
+                    return;
                 }
+
+                if(semver.valid(allInfo.complyingVersion) === null) {
+                    res.send(svgs.invalidVersion());
+                    return;
+                }
+
+                var ghrepo = client.repo(allInfo.complyingStandard);
+                ghrepo.releases(function(err, info) {
+                    if(err !== null) {
+                        console.log(err);
+                        res.send(svgs.invalidRepo());
+                        return
+                    }
+                    var color;
+                    var stable = info.filter(function(release) {
+                        return release.draft == false;
+                    });
+                    if(stable.length) {
+                        if(semver.eq(allInfo.complyingVersion, stable[0].tag_name)) {
+                            color = '#00FF00';
+                        } else if(semver.lt(allInfo.complyingVersion, stable[0].tag_name)) {
+                            color = '#FF0000';
+                        } else {
+                            res.send(svgs.versionMismatch());
+                            return;
+                        }
+                        var resultSVG = getSVG(allInfo.complierRepo, allInfo.complyingStandard, allInfo.complyingVersion, color);
+                        myCache.set(allInfo.complierRepo + ':' + allInfo.complyingStandard + ':' + allInfo.complierVersion, resultSVG, function() {
+                            if( !err && success ){
+                                res.send(resultSVG);
+                            } else {
+                                console.log(err);
+                                res.send(resultSVG);
+                            }
+                        });
+                    } else {
+                        res.send(svgs.invalidRelease());
+                    }
+                });
             });
         } else {
             res.send(svgs.invalidStandard());
@@ -146,7 +200,22 @@ app.get('/badge/:issue', function (req, res) {
     });
 });
 
-app.listen(80, function () {
-    console.log('App listening on port 80!');
+app.get('/participants.json', function(req, res) {
+    res.setHeader('Content-Type', 'application/json');
+    myCache.get('participants', function(err, value){
+        if(value != undefined) {
+            console.log("Participants cached!");
+            res.send(value);
+        } else {
+            console.log("Participants not cached!");
+            client.get('/repos/standards/meta/issues/comments', { per_page: 100 }, function (err, status, result, headers) {
+                var participants = [...new Set(result.filter(comment => comment.user.login !== "t-giovl").map(comment => comment.user.login))];
+                myCache.set('participants', participants, function(err, success) {
+                    res.send(participants);
+                });
+            });
+        }
+    });
 });
 
+http.createServer(app).listen(80);
