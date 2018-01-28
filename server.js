@@ -44,8 +44,6 @@ var svgs = {
     "majorOutOfDate": getSVG.bind(this, "owner/repo", "example", "vX.Y.Z", "#FF0000"),
     "invalidTitle": getSVG.bind(this, "Error", "Invalid", "title", "#CD853F")
 };
-    "invalidTitle": getSVG.bind(this, "Error", "Invalid", "title", "#FFFF66")
-};
 
 app.get('/legend', function(req, res) {
     res.setHeader('Content-Type', 'text/html');
