@@ -27,8 +27,8 @@ var svg = `<?xml version="1.0" encoding="UTF-8"?>
 </svg>`;
 
 var getSVG = function(text1, text2, text3, color) {
-    var width = pixelWidth(text2 + ' ' + text3, { size: 12 });
-    return util.format(svg, width + 34 + 30, width + 34, width + 34, text1, text2, text3, width + 33, width + 33, color);
+    var width = Math.round(pixelWidth(text2 + ' ' + text3, { size: 12 }));
+    return util.format(svg, width + 34 + 20, width + 26, width + 26, text1, text2, text3, width + 26, width + 26, color);
 };
 
 var svgs = {
