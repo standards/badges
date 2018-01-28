@@ -40,7 +40,10 @@ var svgs = {
     "invalidRelease": getSVG.bind(this, "Error", "Invalid", "release", "#BDBDBD"),
     "invalidStandard": getSVG.bind(this, "Error", "Invalid", "standard", "#00FFFF"),
     "upToDate": getSVG.bind(this, "owner/repo", "example", "vX.Y.Z", "#00FF00"),
-    "outOfDate": getSVG.bind(this, "owner/repo", "example", "vX.Y.Z", "#FF0000"),
+    "minorOutOfDate": getSVG.bind(this, "owner/repo", "example", "vX.Y.Z", "#FFF200"),
+    "majorOutOfDate": getSVG.bind(this, "owner/repo", "example", "vX.Y.Z", "#FF0000"),
+    "invalidTitle": getSVG.bind(this, "Error", "Invalid", "title", "#CD853F")
+};
     "invalidTitle": getSVG.bind(this, "Error", "Invalid", "title", "#FFFF66")
 };
 
@@ -48,7 +51,8 @@ app.get('/legend', function(req, res) {
     res.setHeader('Content-Type', 'text/html');
     res.send(`<html><head><style>body { font-family: Arial; } div {display: block;} div svg {display: inline-block;vertical-align: middle;}</style></head><body>
         <div>`+svgs.upToDate()+`The repository "owner/repo" complies with the latest version of the standard "example"</div>
-        <div>`+svgs.outOfDate()+`The repository "owner/repo" complied with an older version of the standard "example"</div>
+        <div>`+svgs.minorOutOfDate()+`The repository "owner/repo" complies with a minor older version of the standard "example"</div>
+        <div>`+svgs.majorOutOfDate()+`The repository "owner/repo" complied with a major older version of the standard "example"</div>
         <hr>
         <div>`+svgs.ghIssue()+`The GitHub API is throwing some error</div>
         <div>`+svgs.invalidIssue()+`There is no issue with the number provided</div>
@@ -156,7 +160,7 @@ app.get('/badge/:owner/:repo/:issue', function (req, res) {
                     return;
                 }
 
-                if(semver.valid(allInfo.complyingVersion) === null) {
+                if(semver.valid(allInfo.complierVersion) === null) {
                     res.send(svgs.invalidVersion());
                     return;
                 }
@@ -173,16 +177,25 @@ app.get('/badge/:owner/:repo/:issue', function (req, res) {
                         return release.draft == false;
                     });
                     if(stable.length) {
-                        if(semver.eq(allInfo.complyingVersion, stable[0].tag_name)) {
-                            color = '#00FF00';
-                        } else if(semver.lt(allInfo.complyingVersion, stable[0].tag_name)) {
-                            color = '#FF0000';
-                        } else {
+                        switch(semver.diff(allInfo.complierVersion, stable[0].tag_name)) {
+                            case 'major': 
+                                color = '#FF0000';
+                                break;
+                            case 'minor':
+                            case 'preminor':
+                            case 'patch':
+                            case 'prepatch':
+                                color = '#FFFF00';
+                            case null:
+                                color = '#00FF00';
+                                break;
+                        }
+                        if(color === null) {
                             res.send(svgs.versionMismatch());
                             return;
                         }
-                        var resultSVG = getSVG(allInfo.complierRepo, allInfo.complyingStandard, allInfo.complyingVersion, color);
-                        myCache.set(allInfo.complierRepo + ':' + allInfo.complyingStandard + ':' + allInfo.complierVersion, resultSVG, function() {
+                        var resultSVG = getSVG(allInfo.complierRepo, allInfo.complyingStandard, allInfo.complierVersion, color);
+                        myCache.set(allInfo.complierRepo + ':' + allInfo.complyingStandard + ':' + allInfo.complierVersion, resultSVG, function(err, success) {
                             if( !err && success ){
                                 res.send(resultSVG);
                             } else {
@@ -209,7 +222,7 @@ app.get('/participants.json', function(req, res) {
             res.send(value);
         } else {
             console.log("Participants not cached!");
-            client.get('/repos/standards/meta/issues/comments', { per_page: 100 }, function (err, status, result) {
+            client.get('/repos/standards/meta/issues/comments', { per_page: 100 }, function (err, status, result, headers) {
                 var participants = [...new Set(result.map(comment => comment.user.login))];
                 myCache.set('participants', participants, function(err, success) {
                     res.send(participants);
