@@ -230,4 +230,22 @@ app.get('/participants.json', function(req, res) {
     });
 });
 
+app.get('/stargazers.json', function(req, res) {
+    res.setHeader('Content-Type', 'application/json');
+    myCache.get('stargazers', function(err, value){
+        if(value != undefined) {
+            console.log("Stargazers cached!");
+            res.send(value);
+        } else {
+            console.log("Stargazers not cached!");
+            client.get('/repos/standards/meta/stargazers', { per_page: 200 }, function (err, status, result, headers) {
+                var stargazers = [...new Set(result.map(stargazer => stargazer.login))];
+                myCache.set('stargazers', stargazers, function(err, success) {
+                    res.send(stargazers);
+                });
+            });
+        }
+    });
+});
+
 http.createServer(app).listen(80);
