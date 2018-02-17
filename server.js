@@ -12,6 +12,12 @@ const myCache = new NodeCache({ stdTTL: 604800, checkperiod: 259200 });
 
 const client = github.client(process.env.GITHUB_TOKEN);
 
+app.use(function(req, res, next) {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    next();
+});
+
 var svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="%s" height="50">
 <path d="m15 5 h%s a10 10 0 0 1 10 10v14a10 10 0 0 1 -10 10 h-%s a10 10 0 0 1 -10 -10v-14a10 10 0 0 1 10 -10z" fill="none" stroke="#144677"/>
