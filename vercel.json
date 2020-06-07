@@ -1,0 +1,10 @@
+{
+    "version": 2,
+    "redirects": [
+        { "source": "/legend", "destination": "/api/legend" },
+        { "source": "/limits", "destination": "/api/limits" },
+        { "source": "/badge/(.*)/(.*)/(.*)", "destination": "/api/badge/$1/$2/$3" },
+        { "source": "/participants.json", "destination": "/api/participants" },
+        { "source": "/stargazers.json", "destination": "/api/stargazers" }
+      ]
+}
